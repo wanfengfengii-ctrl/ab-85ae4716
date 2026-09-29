@@ -1,0 +1,29 @@
+services:
+  web:
+    build:
+      context: .
+      target: runtime
+    image: dual-joint-router-web
+    ports:
+      # WEB_PORT 可配置，默认 8080；容器内固定监听 80
+      - "${WEB_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 3s
+    restart: unless-stopped
+
+  # 一次性验证服务：web 健康检查通过后运行
+  # 代码测试 -> 构建（tsc 类型检查 + vite build）-> 固定板图联合布线冒烟，
+  # 以容器退出码报告结果（0 全部通过）。
+  verify:
+    build:
+      context: .
+      target: verify
+    image: dual-joint-router-verify
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: "no"
